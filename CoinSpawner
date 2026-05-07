@@ -1,0 +1,84 @@
+-- CoinSpawner (ServerScriptService > Script)
+local Players = game:GetService("Players")
+local Workspace = game:GetService("Workspace")
+local TweenService = game:GetService("TweenService")
+
+local COIN_VALUE = 10          -- nilai tiap koin
+local SPAWN_INTERVAL = 5       -- detik antar spawn
+local MAX_COINS = 20           -- maksimal koin di map
+local RESPAWN_DELAY = 3        -- detik sebelum koin respawn
+
+-- Spawn area (sesuaikan dengan mapmu)
+local SPAWN_AREA = {
+	MinX = -50, MaxX = 50,
+	MinZ = -50, MaxZ = 50,
+	Y = 3  -- tinggi spawn
+}
+
+local CoinTemplate = Workspace:WaitForChild("CoinTemplate")
+local CoinsFolder = Instance.new("Folder")
+CoinsFolder.Name = "Coins"
+CoinsFolder.Parent = Workspace
+
+-- Animasi koin berputar
+local function animateCoin(coin)
+	local tweenInfo = TweenInfo.new(1, Enum.EasingStyle.Linear, Enum.EasingDirection.InOut, -1)
+	local tween = TweenService:Create(coin, tweenInfo, {
+		CFrame = coin.CFrame * CFrame.Angles(0, math.rad(360), 0)
+	})
+	tween:Play()
+
+	-- Efek naik-turun
+	local bobInfo = TweenInfo.new(0.8, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut, -1, true)
+	local bob = TweenService:Create(coin, bobInfo, {
+		Position = coin.Position + Vector3.new(0, 0.5, 0)
+	})
+	bob:Play()
+end
+
+-- Spawn satu koin
+local function spawnCoin()
+	if #CoinsFolder:GetChildren() >= MAX_COINS then return end
+
+	local coin = CoinTemplate:Clone()
+	coin.Name = "Coin"
+	coin.Anchored = true
+	coin.CanCollide = false
+	coin.BrickColor = BrickColor.new("Bright yellow")
+	coin.Material = Enum.Material.Neon
+
+	-- Posisi acak
+	local x = math.random(SPAWN_AREA.MinX, SPAWN_AREA.MaxX)
+	local z = math.random(SPAWN_AREA.MinZ, SPAWN_AREA.MaxZ)
+	coin.Position = Vector3.new(x, SPAWN_AREA.Y, z)
+	coin.Parent = CoinsFolder
+
+	animateCoin(coin)
+
+	-- Deteksi sentuhan pemain
+	coin.Touched:Connect(function(hit)
+		local character = hit.Parent
+		local player = Players:GetPlayerFromCharacter(character)
+
+		if player and coin.Parent then
+			-- Efek pickup
+			coin.Parent = nil  -- hapus dari map
+
+			-- Tambah koin
+			if player.leaderstats then
+				player.leaderstats.Coins.Value += COIN_VALUE
+			end
+
+			-- Respawn koin setelah delay
+			task.delay(RESPAWN_DELAY, spawnCoin)
+		end
+	end)
+end
+
+-- Spawn koin secara berkala
+task.spawn(function()
+	while true do
+		spawnCoin()
+		task.wait(SPAWN_INTERVAL)
+	end
+end)
