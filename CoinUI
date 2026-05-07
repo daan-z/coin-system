@@ -1,0 +1,47 @@
+-- CoinUI (StarterPlayerScripts > LocalScript)
+local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local TweenService = game:GetService("TweenService")
+
+local player = Players.LocalPlayer
+local UpdateCoins = ReplicatedStorage:WaitForChild("UpdateCoins")
+
+-- Buat GUI
+local screenGui = Instance.new("ScreenGui")
+screenGui.Name = "CoinGui"
+screenGui.ResetOnSpawn = false
+screenGui.Parent = player:WaitForChild("PlayerGui")
+
+local frame = Instance.new("Frame")
+frame.Size = UDim2.new(0, 180, 0, 50)
+frame.Position = UDim2.new(1, -200, 0, 20)
+frame.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
+frame.BackgroundTransparency = 0.4
+frame.BorderSizePixel = 0
+frame.Parent = screenGui
+
+local corner = Instance.new("UICorner")
+corner.CornerRadius = UDim.new(0, 10)
+corner.Parent = frame
+
+local label = Instance.new("TextLabel")
+label.Size = UDim2.new(1, 0, 1, 0)
+label.BackgroundTransparency = 1
+label.TextColor3 = Color3.fromRGB(255, 215, 0)  -- gold
+label.Font = Enum.Font.GothamBold
+label.TextSize = 22
+label.Text = "🪙 0"
+label.Parent = frame
+
+-- Update tampilan saat server mengirim data
+UpdateCoins.OnClientEvent:Connect(function(newValue)
+	label.Text = "🪙 " .. tostring(newValue)
+
+	-- Animasi bounce saat dapat koin
+	local tweenIn = TweenService:Create(label, TweenInfo.new(0.1), {TextSize = 28})
+	local tweenOut = TweenService:Create(label, TweenInfo.new(0.15), {TextSize = 22})
+	tweenIn:Play()
+	tweenIn.Completed:Connect(function()
+		tweenOut:Play()
+	end)
+end)
