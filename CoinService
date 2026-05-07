@@ -1,0 +1,71 @@
+-- CoinService (ServerScriptService > Script)
+local Players = game:GetService("Players")
+local DataStoreService = game:GetService("DataStoreService")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
+local CoinStore = DataStoreService:GetDataStore("CoinData_v1")
+local UpdateCoins = ReplicatedStorage:WaitForChild("UpdateCoins")
+
+-- Simpan data saat player keluar
+local function saveData(player)
+	local coins = player.leaderstats and player.leaderstats.Coins.Value or 0
+	local success, err = pcall(function()
+		CoinStore:SetAsync(player.UserId, coins)
+	end)
+	if not success then warn("Gagal simpan data: " .. err) end
+end
+
+-- Load data saat player masuk
+local function onPlayerAdded(player)
+	-- Buat leaderstats
+	local leaderstats = Instance.new("Folder")
+	leaderstats.Name = "leaderstats"
+	leaderstats.Parent = player
+
+	local coins = Instance.new("IntValue")
+	coins.Name = "Coins"
+	coins.Value = 0
+	coins.Parent = leaderstats
+
+	-- Load dari DataStore
+	local success, data = pcall(function()
+		return CoinStore:GetAsync(player.UserId)
+	end)
+	if success and data then
+		coins.Value = data
+	end
+
+	-- Sync ke client setiap kali coins berubah
+	coins.Changed:Connect(function(newValue)
+		UpdateCoins:FireClient(player, newValue)
+	end)
+
+	-- Kirim nilai awal ke client
+	UpdateCoins:FireClient(player, coins.Value)
+end
+
+Players.PlayerAdded:Connect(onPlayerAdded)
+Players.PlayerRemoving:Connect(saveData)
+
+-- Auto-save setiap 60 detik
+game:GetService("RunService").Heartbeat:Connect(function()
+end)
+task.spawn(function()
+	while true do
+		task.wait(60)
+		for _, player in ipairs(Players:GetPlayers()) do
+			saveData(player)
+		end
+	end
+end)
+
+-- Fungsi global untuk menambah koin dari script lain
+local CoinService = {}
+
+function CoinService.AddCoins(player, amount)
+	if player and player.leaderstats then
+		player.leaderstats.Coins.Value += amount
+	end
+end
+
+return CoinService
